@@ -1,0 +1,96 @@
+package com.example.mentimeter.Controller;
+
+import com.example.mentimeter.Model.Quiz;
+import com.example.mentimeter.Model.QuizAttempt;
+import com.example.mentimeter.Model.QuizHost;
+import com.example.mentimeter.Service.QuizService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/quiz")
+public class QuizController {
+
+    private final QuizService quizService ;
+
+    @Autowired
+    public QuizController(QuizService quizService) {
+        this.quizService = quizService;
+    }
+
+    @PostMapping
+    public ResponseEntity<Quiz> createQuiz(@RequestBody Quiz quiz) {
+        Quiz createdQuiz = quizService.createQuiz(quiz);
+        return new ResponseEntity<>(createdQuiz, HttpStatus.CREATED);
+    }
+
+    @GetMapping("/user/{username}")
+    public ResponseEntity<List<Quiz>> getQuizFromUsername(@PathVariable String username){
+        return ResponseEntity.ok(quizService.finddQuizBYUsername(username));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Quiz> getQuizById(@PathVariable String id) {
+        Optional<Quiz> quizOptional = quizService.getQuizById(id);
+
+
+        return quizOptional.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+
+    @GetMapping("/{username}/AttemptedQuiz")
+    public ResponseEntity<List<QuizAttempt>> getAttemptedQuiz(@PathVariable String username){
+        return quizService.getAttemptedQuiz(username);
+    }
+
+    @GetMapping("/{username}/AttemptedQuiz/{joinCode}/quizAttempt")
+    public ResponseEntity<QuizAttempt> getQuizAttempt(@PathVariable String username,@PathVariable String joinCode){
+        return quizService.getQuizAttempt(joinCode,username);
+    }
+
+    @GetMapping("/{username}/HostedQuiz")
+    public ResponseEntity<List<QuizHost>> getHostedQuiz(@PathVariable String username){
+        return quizService.getHostedQuiz(username);
+    }
+
+
+    @DeleteMapping("/{quizId}/deleteQuiz")
+    public void deleteQuizByQuizId(@PathVariable String quizId){
+         quizService.deleteQuiz(quizId);
+    }
+
+    /**
+     * [Phase 4] Endpoint to generate a quiz from an AI prompt.
+     * (Placeholder for future implementation)
+     */
+    @PostMapping("/generate")
+    public ResponseEntity<Quiz> generateQuiz() {
+//         TODO: Implement logic to call an AI service and create a quiz
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    }
+
+    @PutMapping("/{quizId}/edit")
+    public ResponseEntity<Quiz> editQuiz(@PathVariable String quizId,@RequestBody Quiz quiz){
+        return quizService.editQuiz(quizId,quiz);
+    }
+
+    @DeleteMapping("/my-attempt/live/{sessionId}")
+    public ResponseEntity<Void> deleteMyLiveAttempt(
+            @PathVariable String sessionId,
+            Authentication auth
+    ) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String username = auth.getName();
+        quizService.deleteMyLiveAttempt(sessionId, username);
+        return ResponseEntity.ok().build();
+    }
+}
